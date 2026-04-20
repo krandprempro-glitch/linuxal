@@ -1,38 +1,36 @@
 #!/system/bin/sh
 
 echo "========================================="
-echo "   LinuxAL - Arch Linux"
+echo "   LinuxAL - Alpine Linux"
 echo "========================================="
 
 APP_DIR="/data/data/com.example.mybasic.activity/files"
 PROOT_PATH="$APP_DIR/proot"
-ROOTFS_PATH="$APP_DIR/arch-rootfs"
-DOWNLOAD_URL="https://github.com/termux/proot-distro/releases/download/v4.34.2/archlinux-aarch64-pd-v4.34.2.tar.xz"
-ROOTFS_TAR="$APP_DIR/arch-rootfs.tar.xz"
+ROOTFS_PATH="$APP_DIR/rootfs"
 
+# التحقق من وجود proot
 if [ ! -f "$PROOT_PATH" ]; then
     echo "❌ proot not found!"
     exit 1
 fi
 
+# التحقق من وجود rootfs
 if [ ! -d "$ROOTFS_PATH" ]; then
-    echo "📦 Downloading Arch Linux (~500MB)..."
-    curl -L -o "$ROOTFS_TAR" "$DOWNLOAD_URL" || wget -O "$ROOTFS_TAR" "$DOWNLOAD_URL"
-    
-    echo "📂 Extracting..."
+    echo "📦 Extracting Alpine Linux..."
     mkdir -p "$ROOTFS_PATH"
-    tar -xJf "$ROOTFS_TAR" -C "$ROOTFS_PATH"
-    rm -f "$ROOTFS_TAR"
-    echo "✅ Installation complete!"
+    cd "$APP_DIR"
+    tar -xzf rootfs.tar.gz -C "$ROOTFS_PATH"
+    echo "✅ Extraction complete!"
 fi
 
-echo "🚀 Starting Arch Linux..."
+echo "🚀 Starting Alpine Linux..."
 echo "========================================="
 
+# تشغيل Alpine Linux مباشرة
 $PROOT_PATH \
   -R "$ROOTFS_PATH" \
   -b /dev \
   -b /proc \
   -b /sys \
   -b /sdcard:/mnt/sdcard \
-  /usr/bin/bash -c "echo 'Welcome to Arch Linux!'; exec /usr/bin/bash"
+  /bin/sh -c "echo 'Welcome to Alpine Linux!'; exec /bin/sh"

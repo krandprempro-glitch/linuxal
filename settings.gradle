@@ -1,32 +1,19 @@
 pluginManagement {
     repositories {
-        mavenLocal()
-        maven { url "https://maven.aliyun.com/repository/public/" }
+        google()
         mavenCentral()
         gradlePluginPortal()
-        maven { url "https://oss.sonatype.org/content/repositories/snapshots/" }
-        google()
-        maven { url "https://jitpack.io" }
     }
 }
-
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.PREFER_SETTINGS)
     repositories {
-        mavenLocal()
-        maven { url "https://maven.aliyun.com/repository/public/" }
-        mavenCentral()
         google()
-        gradlePluginPortal()
-        maven { url "https://oss.sonatype.org/content/repositories/snapshots/" }
-        maven { url "https://oss.sonatype.org/content/repositories/releases/" }
-        maven { url "https://jitpack.io" }
+        mavenCentral()
     }
 }
-
-rootProject.name = "MyBasicActivity"
-
-include(":app")
-include(":terminal-emulator")
-include(":terminal-view")
-include(":termux-shared")
+rootProject.name = "LinuxAL"
+include ':app'
+include ':terminal-emulator'
+include ':terminal-view'
+include ':termux-shared'
