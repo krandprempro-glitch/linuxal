@@ -1,8 +1,5 @@
 package com.example.mybasic.activity;
 
-import android.Manifest;
-import android.content.pm.PackageManager;
-import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -10,14 +7,21 @@ import android.text.method.ScrollingMovementMethod;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.inputmethod.EditorInfo;
-import android.widget.*;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.ImageButton;
+import android.widget.LinearLayout;
+import android.widget.ScrollView;
+import android.widget.TextView;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
-import androidx.core.app.ActivityCompat;
-import androidx.core.content.ContextCompat;
-import java.io.*;
-import java.util.ArrayList;
-import java.util.List;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.FileWriter;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
 
 public class MainActivity extends AppCompatActivity {
     private EditText inputCommand;
@@ -26,20 +30,10 @@ public class MainActivity extends AppCompatActivity {
     private Handler mainHandler;
     private Process linuxProcess;
     
-    // قائمة الأذونات المطلوبة
-    private static final int PERMISSION_REQUEST_CODE = 100;
-    private String[] requiredPermissions;
-    
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_terminal);
-        
-        // إعداد الأذونات حسب إصدار Android
-        setupPermissions();
-        
-        // طلب الأذونات
-        checkAndRequestPermissions();
         
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
@@ -49,8 +43,14 @@ public class MainActivity extends AppCompatActivity {
         scrollView = findViewById(R.id.terminal_scroll);
         ImageButton sendButton = findViewById(R.id.send_button);
         
+        outputText.setTextColor(0xFFFFFFFF);
+        outputText.setTextSize(13);
+        outputText.setTypeface(android.graphics.Typeface.MONOSPACE);
         outputText.setMovementMethod(new ScrollingMovementMethod());
         outputText.setText("LinuxAL Terminal Ready.\n\n");
+        
+        inputCommand.setTextColor(0xFFFFFFFF);
+        inputCommand.setHintTextColor(0xFF888888);
         
         mainHandler = new Handler(Looper.getMainLooper());
         
@@ -68,77 +68,27 @@ public class MainActivity extends AppCompatActivity {
         startLinux();
     }
     
-    private void setupPermissions() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            requiredPermissions = new String[]{
-                Manifest.permission.INTERNET,
-                Manifest.permission.WRITE_EXTERNAL_STORAGE,
-                Manifest.permission.READ_EXTERNAL_STORAGE,
-                Manifest.permission.POST_NOTIFICATIONS,
-                Manifest.permission.FOREGROUND_SERVICE
-            };
-        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            requiredPermissions = new String[]{
-                Manifest.permission.INTERNET,
-                Manifest.permission.WRITE_EXTERNAL_STORAGE,
-                Manifest.permission.READ_EXTERNAL_STORAGE,
-                Manifest.permission.FOREGROUND_SERVICE
-            };
-        } else {
-            requiredPermissions = new String[]{
-                Manifest.permission.INTERNET,
-                Manifest.permission.WRITE_EXTERNAL_STORAGE,
-                Manifest.permission.READ_EXTERNAL_STORAGE
-            };
-        }
-    }
-    
-    private void checkAndRequestPermissions() {
-        List<String> permissionsNeeded = new ArrayList<>();
-        for (String permission : requiredPermissions) {
-            if (ContextCompat.checkSelfPermission(this, permission) != PackageManager.PERMISSION_GRANTED) {
-                permissionsNeeded.add(permission);
-            }
-        }
-        
-        if (!permissionsNeeded.isEmpty()) {
-            ActivityCompat.requestPermissions(this, 
-                permissionsNeeded.toArray(new String[0]), 
-                PERMISSION_REQUEST_CODE);
-        } else {
-            appendToTerminal("✓ All permissions granted.\n");
-        }
-    }
-    
-    @Override
-    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode == PERMISSION_REQUEST_CODE) {
-            boolean allGranted = true;
-            for (int result : grantResults) {
-                if (result != PackageManager.PERMISSION_GRANTED) {
-                    allGranted = false;
-                    break;
-                }
-            }
-            if (allGranted) {
-                appendToTerminal("✓ All permissions granted.\n");
-            } else {
-                appendToTerminal("⚠️ Some permissions denied. Some features may not work.\n");
-            }
-        }
-    }
-    
     private void startLinux() {
-        appendToTerminal("\n[Starting Linux...]\n");
+        appendToTerminal("\n[Starting Alpine Linux...]\n");
         
         new Thread(() -> {
             try {
                 copyAssetToFile("proot", "proot");
-                copyAssetToFile("start-linux.sh", "start-linux.sh");
+                copyAssetToFile("rootfs.tar.gz", "rootfs.tar.gz");
+                
+                File rootfsDir = new File(getFilesDir(), "rootfs");
+                if (!rootfsDir.exists() || rootfsDir.list().length == 0) {
+                    appendToTerminal("Extracting rootfs...\n");
+                    extractRootfs();
+                }
+                
+                createStartScript();
                 
                 String scriptPath = getFilesDir() + "/start-linux.sh";
-                linuxProcess = Runtime.getRuntime().exec(new String[]{"/system/bin/sh", scriptPath});
+                ProcessBuilder pb = new ProcessBuilder("/system/bin/sh", scriptPath);
+                pb.directory(getFilesDir());
+                pb.redirectErrorStream(true);
+                linuxProcess = pb.start();
                 
                 BufferedReader reader = new BufferedReader(new InputStreamReader(linuxProcess.getInputStream()));
                 String line;
@@ -155,6 +105,60 @@ public class MainActivity extends AppCompatActivity {
         }).start();
     }
     
+    private void extractRootfs() {
+        try {
+            String tarPath = getFilesDir() + "/rootfs.tar.gz";
+            String destPath = getFilesDir() + "/rootfs";
+            
+            Process process = Runtime.getRuntime().exec(new String[]{
+                "/system/bin/sh", "-c", "mkdir -p " + destPath + " && cd " + destPath + " && tar -xzf " + tarPath
+            });
+            process.waitFor();
+            
+            appendToTerminal("✓ Rootfs extracted\n");
+            
+        } catch (Exception e) {
+            appendToTerminal("Extract error: " + e.getMessage() + "\n");
+        }
+    }
+    
+    private void createStartScript() {
+        try {
+            String scriptPath = getFilesDir() + "/start-linux.sh";
+            FileWriter fw = new FileWriter(scriptPath);
+            fw.write("#!/system/bin/sh\n\n");
+            fw.write("echo '========================================='\n");
+            fw.write("echo '   LinuxAL - Alpine Linux'\n");
+            fw.write("echo '========================================='\n\n");
+            fw.write("PROOT_PATH=\"" + getFilesDir() + "/proot\"\n");
+            fw.write("ROOTFS_PATH=\"" + getFilesDir() + "/rootfs\"\n\n");
+            fw.write("if [ ! -f \"$PROOT_PATH\" ]; then\n");
+            fw.write("    echo '❌ proot not found!'\n");
+            fw.write("    exit 1\n");
+            fw.write("fi\n\n");
+            fw.write("if [ ! -d \"$ROOTFS_PATH\" ]; then\n");
+            fw.write("    echo '❌ rootfs not found!'\n");
+            fw.write("    exit 1\n");
+            fw.write("fi\n\n");
+            fw.write("chmod 755 $PROOT_PATH\n\n");
+            fw.write("echo '🚀 Starting Alpine Linux...'\n");
+            fw.write("echo '========================================='\n\n");
+            fw.write("exec $PROOT_PATH \\\n");
+            fw.write("  -R $ROOTFS_PATH \\\n");
+            fw.write("  -b /dev \\\n");
+            fw.write("  -b /proc \\\n");
+            fw.write("  -b /sys \\\n");
+            fw.write("  -b /sdcard:/mnt/sdcard \\\n");
+            fw.write("  /bin/sh -c \"echo 'Welcome to Alpine Linux!'; exec /bin/sh\"\n");
+            fw.close();
+            
+            Runtime.getRuntime().exec("chmod +x " + scriptPath);
+            
+        } catch (Exception e) {
+            appendToTerminal("Script error: " + e.getMessage() + "\n");
+        }
+    }
+    
     private void copyAssetToFile(String assetName, String destName) {
         try {
             File destFile = new File(getFilesDir(), destName);
@@ -168,7 +172,10 @@ public class MainActivity extends AppCompatActivity {
                 }
                 in.close();
                 out.close();
-                destFile.setExecutable(true);
+                if (assetName.equals("proot")) {
+                    destFile.setExecutable(true);
+                }
+                appendToTerminal("✓ Copied: " + assetName + "\n");
             }
         } catch (Exception e) {
             appendToTerminal("Failed to copy: " + assetName + "\n");
