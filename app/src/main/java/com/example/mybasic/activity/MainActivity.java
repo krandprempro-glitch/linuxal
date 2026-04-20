@@ -1,12 +1,18 @@
 package com.example.mybasic.activity;
 
+import android.Manifest;
+import android.content.pm.PackageManager;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.View;
 import android.widget.*;
 import android.graphics.Color;
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 import java.io.*;
 
 public class MainActivity extends AppCompatActivity {
@@ -16,9 +22,20 @@ public class MainActivity extends AppCompatActivity {
     private Handler mainHandler;
     private Process linuxProcess;
     
+    // كود طلب الأذونات
+    private static final int PERMISSION_REQUEST_CODE = 100;
+    private String[] requiredPermissions = {
+        Manifest.permission.INTERNET,
+        Manifest.permission.WRITE_EXTERNAL_STORAGE,
+        Manifest.permission.READ_EXTERNAL_STORAGE
+    };
+    
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        
+        // طلب الأذونات
+        checkAndRequestPermissions();
         
         // واجهة المستخدم
         LinearLayout layout = new LinearLayout(this);
@@ -30,6 +47,7 @@ public class MainActivity extends AppCompatActivity {
         title.setText("🐧 LinuxAL - Arch Linux");
         title.setTextSize(20);
         title.setTextColor(Color.GREEN);
+        title.setPadding(10, 10, 10, 20);
         layout.addView(title);
         
         inputCommand = new EditText(this);
@@ -38,6 +56,7 @@ public class MainActivity extends AppCompatActivity {
         inputCommand.setTextColor(Color.WHITE);
         inputCommand.setBackgroundColor(Color.DKGRAY);
         inputCommand.setPadding(20, 15, 20, 15);
+        inputCommand.setSingleLine(true);
         layout.addView(inputCommand);
         
         Button sendButton = new Button(this);
@@ -53,7 +72,7 @@ public class MainActivity extends AppCompatActivity {
         outputText.setBackgroundColor(Color.BLACK);
         outputText.setPadding(10, 10, 10, 10);
         outputText.setTypeface(android.graphics.Typeface.MONOSPACE);
-        outputText.setText("LinuxAL Ready.\nLoading ld-linux...\n");
+        outputText.setText("LinuxAL Ready.\nRequesting permissions...\n");
         scrollView.addView(outputText);
         layout.addView(scrollView, new LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT, 0, 1));
@@ -62,38 +81,78 @@ public class MainActivity extends AppCompatActivity {
         mainHandler = new Handler(Looper.getMainLooper());
         
         sendButton.setOnClickListener(v -> executeCommand());
+        inputCommand.setOnEditorActionListener((v, actionId, event) -> {
+            executeCommand();
+            return true;
+        });
         
-        // تشغيل Linux
+        // بدء Linux بعد منح الأذونات
         startLinux();
     }
     
-    private void startLinux() {
-        new Thread(() -> {
-            try {
-                // نسخ الملفات
-                copyAssetToFile("proot", "proot");
-                copyAssetToFile("ld-linux-aarch64.so.1", "ld-linux-aarch64.so.1");
-                copyAssetToFile("start-linux.sh", "start-linux.sh");
-                
-                appendToTerminal("✓ Files copied\n");
-                appendToTerminal("🚀 Starting Arch Linux with ld-linux...\n");
-                
-                String scriptPath = getFilesDir() + "/start-linux.sh";
-                linuxProcess = Runtime.getRuntime().exec(new String[]{"/system/bin/sh", scriptPath});
-                
-                BufferedReader reader = new BufferedReader(new InputStreamReader(linuxProcess.getInputStream()));
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    final String output = line;
-                    mainHandler.post(() -> outputText.append(output + "\n"));
+    private void checkAndRequestPermissions() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            boolean allGranted = true;
+            for (String permission : requiredPermissions) {
+                if (ContextCompat.checkSelfPermission(this, permission) != PackageManager.PERMISSION_GRANTED) {
+                    allGranted = false;
+                    break;
                 }
-                
-                linuxProcess.waitFor();
-                
-            } catch (Exception e) {
-                appendToTerminal("Error: " + e.getMessage() + "\n");
             }
-        }).start();
+            if (!allGranted) {
+                ActivityCompat.requestPermissions(this, requiredPermissions, PERMISSION_REQUEST_CODE);
+            } else {
+                appendToTerminal("✓ All permissions granted.\n");
+            }
+        } else {
+            appendToTerminal("✓ Permissions granted (Android < 6.0).\n");
+        }
+    }
+    
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == PERMISSION_REQUEST_CODE) {
+            boolean allGranted = true;
+            for (int result : grantResults) {
+                if (result != PackageManager.PERMISSION_GRANTED) {
+                    allGranted = false;
+                    break;
+                }
+            }
+            if (allGranted) {
+                appendToTerminal("✓ All permissions granted!\n");
+            } else {
+                appendToTerminal("⚠️ Some permissions denied. Linux may not work properly.\n");
+            }
+        }
+    }
+    
+    private void startLinux() {
+        // تأخير بسيط لظهور رسالة الأذونات
+        mainHandler.postDelayed(() -> {
+            appendToTerminal("\n[Starting Arch Linux...]\n");
+            new Thread(() -> {
+                try {
+                    copyAssetToFile("proot", "proot");
+                    copyAssetToFile("start-linux.sh", "start-linux.sh");
+                    
+                    String scriptPath = getFilesDir() + "/start-linux.sh";
+                    linuxProcess = Runtime.getRuntime().exec(new String[]{"/system/bin/sh", scriptPath});
+                    
+                    BufferedReader reader = new BufferedReader(new InputStreamReader(linuxProcess.getInputStream()));
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        final String output = line;
+                        mainHandler.post(() -> outputText.append(output + "\n"));
+                    }
+                    
+                    linuxProcess.waitFor();
+                } catch (Exception e) {
+                    appendToTerminal("Error: " + e.getMessage() + "\n");
+                }
+            }).start();
+        }, 2000);
     }
     
     private void copyAssetToFile(String assetName, String destName) {
