@@ -6,14 +6,18 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.text.method.ScrollingMovementMethod;
+import android.view.KeyEvent;
 import android.view.View;
+import android.view.inputmethod.EditorInfo;
 import android.widget.*;
-import android.graphics.Color;
-import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.Toolbar;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import java.io.*;
+import java.util.ArrayList;
+import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
     private EditText inputCommand;
@@ -22,95 +26,92 @@ public class MainActivity extends AppCompatActivity {
     private Handler mainHandler;
     private Process linuxProcess;
     
-    // كود طلب الأذونات
+    // قائمة الأذونات المطلوبة
     private static final int PERMISSION_REQUEST_CODE = 100;
-    private String[] requiredPermissions = {
-        Manifest.permission.INTERNET,
-        Manifest.permission.WRITE_EXTERNAL_STORAGE,
-        Manifest.permission.READ_EXTERNAL_STORAGE
-    };
+    private String[] requiredPermissions;
     
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_terminal);
+        
+        // إعداد الأذونات حسب إصدار Android
+        setupPermissions();
         
         // طلب الأذونات
         checkAndRequestPermissions();
         
-        // واجهة المستخدم
-        LinearLayout layout = new LinearLayout(this);
-        layout.setOrientation(LinearLayout.VERTICAL);
-        layout.setPadding(20, 40, 20, 20);
-        layout.setBackgroundColor(Color.BLACK);
+        Toolbar toolbar = findViewById(R.id.toolbar);
+        setSupportActionBar(toolbar);
         
-        TextView title = new TextView(this);
-        title.setText("🐧 LinuxAL - Arch Linux");
-        title.setTextSize(20);
-        title.setTextColor(Color.GREEN);
-        title.setPadding(10, 10, 10, 20);
-        layout.addView(title);
+        inputCommand = findViewById(R.id.input_command);
+        outputText = findViewById(R.id.terminal_output);
+        scrollView = findViewById(R.id.terminal_scroll);
+        ImageButton sendButton = findViewById(R.id.send_button);
         
-        inputCommand = new EditText(this);
-        inputCommand.setHint("$ Enter command...");
-        inputCommand.setHintTextColor(Color.GRAY);
-        inputCommand.setTextColor(Color.WHITE);
-        inputCommand.setBackgroundColor(Color.DKGRAY);
-        inputCommand.setPadding(20, 15, 20, 15);
-        inputCommand.setSingleLine(true);
-        layout.addView(inputCommand);
+        outputText.setMovementMethod(new ScrollingMovementMethod());
+        outputText.setText("LinuxAL Terminal Ready.\n\n");
         
-        Button sendButton = new Button(this);
-        sendButton.setText("Send");
-        sendButton.setBackgroundColor(Color.GREEN);
-        sendButton.setTextColor(Color.BLACK);
-        layout.addView(sendButton);
-        
-        scrollView = new ScrollView(this);
-        outputText = new TextView(this);
-        outputText.setTextSize(11);
-        outputText.setTextColor(Color.GREEN);
-        outputText.setBackgroundColor(Color.BLACK);
-        outputText.setPadding(10, 10, 10, 10);
-        outputText.setTypeface(android.graphics.Typeface.MONOSPACE);
-        outputText.setText("LinuxAL Ready.\nRequesting permissions...\n");
-        scrollView.addView(outputText);
-        layout.addView(scrollView, new LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT, 0, 1));
-        
-        setContentView(layout);
         mainHandler = new Handler(Looper.getMainLooper());
         
         sendButton.setOnClickListener(v -> executeCommand());
+        
         inputCommand.setOnEditorActionListener((v, actionId, event) -> {
-            executeCommand();
-            return true;
+            if (actionId == EditorInfo.IME_ACTION_SEND || 
+                (event != null && event.getKeyCode() == KeyEvent.KEYCODE_ENTER)) {
+                executeCommand();
+                return true;
+            }
+            return false;
         });
         
-        // بدء Linux بعد منح الأذونات
         startLinux();
     }
     
-    private void checkAndRequestPermissions() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            boolean allGranted = true;
-            for (String permission : requiredPermissions) {
-                if (ContextCompat.checkSelfPermission(this, permission) != PackageManager.PERMISSION_GRANTED) {
-                    allGranted = false;
-                    break;
-                }
-            }
-            if (!allGranted) {
-                ActivityCompat.requestPermissions(this, requiredPermissions, PERMISSION_REQUEST_CODE);
-            } else {
-                appendToTerminal("✓ All permissions granted.\n");
-            }
+    private void setupPermissions() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            requiredPermissions = new String[]{
+                Manifest.permission.INTERNET,
+                Manifest.permission.WRITE_EXTERNAL_STORAGE,
+                Manifest.permission.READ_EXTERNAL_STORAGE,
+                Manifest.permission.POST_NOTIFICATIONS,
+                Manifest.permission.FOREGROUND_SERVICE
+            };
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            requiredPermissions = new String[]{
+                Manifest.permission.INTERNET,
+                Manifest.permission.WRITE_EXTERNAL_STORAGE,
+                Manifest.permission.READ_EXTERNAL_STORAGE,
+                Manifest.permission.FOREGROUND_SERVICE
+            };
         } else {
-            appendToTerminal("✓ Permissions granted (Android < 6.0).\n");
+            requiredPermissions = new String[]{
+                Manifest.permission.INTERNET,
+                Manifest.permission.WRITE_EXTERNAL_STORAGE,
+                Manifest.permission.READ_EXTERNAL_STORAGE
+            };
+        }
+    }
+    
+    private void checkAndRequestPermissions() {
+        List<String> permissionsNeeded = new ArrayList<>();
+        for (String permission : requiredPermissions) {
+            if (ContextCompat.checkSelfPermission(this, permission) != PackageManager.PERMISSION_GRANTED) {
+                permissionsNeeded.add(permission);
+            }
+        }
+        
+        if (!permissionsNeeded.isEmpty()) {
+            ActivityCompat.requestPermissions(this, 
+                permissionsNeeded.toArray(new String[0]), 
+                PERMISSION_REQUEST_CODE);
+        } else {
+            appendToTerminal("✓ All permissions granted.\n");
         }
     }
     
     @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == PERMISSION_REQUEST_CODE) {
             boolean allGranted = true;
@@ -121,38 +122,37 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
             if (allGranted) {
-                appendToTerminal("✓ All permissions granted!\n");
+                appendToTerminal("✓ All permissions granted.\n");
             } else {
-                appendToTerminal("⚠️ Some permissions denied. Linux may not work properly.\n");
+                appendToTerminal("⚠️ Some permissions denied. Some features may not work.\n");
             }
         }
     }
     
     private void startLinux() {
-        // تأخير بسيط لظهور رسالة الأذونات
-        mainHandler.postDelayed(() -> {
-            appendToTerminal("\n[Starting Arch Linux...]\n");
-            new Thread(() -> {
-                try {
-                    copyAssetToFile("proot", "proot");
-                    copyAssetToFile("start-linux.sh", "start-linux.sh");
-                    
-                    String scriptPath = getFilesDir() + "/start-linux.sh";
-                    linuxProcess = Runtime.getRuntime().exec(new String[]{"/system/bin/sh", scriptPath});
-                    
-                    BufferedReader reader = new BufferedReader(new InputStreamReader(linuxProcess.getInputStream()));
-                    String line;
-                    while ((line = reader.readLine()) != null) {
-                        final String output = line;
-                        mainHandler.post(() -> outputText.append(output + "\n"));
-                    }
-                    
-                    linuxProcess.waitFor();
-                } catch (Exception e) {
-                    appendToTerminal("Error: " + e.getMessage() + "\n");
+        appendToTerminal("\n[Starting Linux...]\n");
+        
+        new Thread(() -> {
+            try {
+                copyAssetToFile("proot", "proot");
+                copyAssetToFile("start-linux.sh", "start-linux.sh");
+                
+                String scriptPath = getFilesDir() + "/start-linux.sh";
+                linuxProcess = Runtime.getRuntime().exec(new String[]{"/system/bin/sh", scriptPath});
+                
+                BufferedReader reader = new BufferedReader(new InputStreamReader(linuxProcess.getInputStream()));
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    final String output = line;
+                    mainHandler.post(() -> outputText.append(output + "\n"));
                 }
-            }).start();
-        }, 2000);
+                
+                linuxProcess.waitFor();
+                
+            } catch (Exception e) {
+                appendToTerminal("Error: " + e.getMessage() + "\n");
+            }
+        }).start();
     }
     
     private void copyAssetToFile(String assetName, String destName) {
