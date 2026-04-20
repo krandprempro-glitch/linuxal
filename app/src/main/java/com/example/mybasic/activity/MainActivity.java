@@ -14,7 +14,6 @@ public class MainActivity extends AppCompatActivity {
     private TextView outputText;
     private ScrollView scrollView;
     private Handler mainHandler;
-    private boolean isLinuxRunning = false;
     private Process linuxProcess;
     
     @Override
@@ -27,7 +26,7 @@ public class MainActivity extends AppCompatActivity {
         layout.setBackgroundColor(Color.BLACK);
         
         TextView title = new TextView(this);
-        title.setText("🐧 LinuxAL - Alpine Linux");
+        title.setText("🐧 LinuxAL - Arch Linux");
         title.setTextSize(24);
         title.setTextColor(Color.GREEN);
         layout.addView(title);
@@ -47,29 +46,25 @@ public class MainActivity extends AppCompatActivity {
         runButton.setText("Run");
         runButton.setBackgroundColor(Color.GREEN);
         runButton.setTextColor(Color.BLACK);
-        runButton.setPadding(20, 15, 20, 15);
         buttonRow.addView(runButton);
         
         Button clearButton = new Button(this);
         clearButton.setText("Clear");
         clearButton.setBackgroundColor(Color.RED);
         clearButton.setTextColor(Color.WHITE);
-        clearButton.setPadding(20, 15, 20, 15);
         buttonRow.addView(clearButton);
+        
+        Button setupButton = new Button(this);
+        setupButton.setText("🔧 Setup Arch");
+        setupButton.setBackgroundColor(Color.rgb(255, 165, 0));
+        setupButton.setTextColor(Color.BLACK);
+        buttonRow.addView(setupButton);
         
         Button linuxButton = new Button(this);
         linuxButton.setText("🐧 Start Linux");
         linuxButton.setBackgroundColor(Color.BLUE);
         linuxButton.setTextColor(Color.WHITE);
-        linuxButton.setPadding(20, 15, 20, 15);
         buttonRow.addView(linuxButton);
-        
-        Button stopButton = new Button(this);
-        stopButton.setText("⏹️ Stop Linux");
-        stopButton.setBackgroundColor(Color.rgb(255, 165, 0));
-        stopButton.setTextColor(Color.WHITE);
-        stopButton.setPadding(20, 15, 20, 15);
-        buttonRow.addView(stopButton);
         
         layout.addView(buttonRow);
         
@@ -90,108 +85,55 @@ public class MainActivity extends AppCompatActivity {
         
         runButton.setOnClickListener(v -> executeCommand());
         clearButton.setOnClickListener(v -> outputText.setText(""));
+        setupButton.setOnClickListener(v -> runSetup());
         linuxButton.setOnClickListener(v -> startLinux());
-        stopButton.setOnClickListener(v -> stopLinux());
     }
     
-    private void startLinux() {
-        if (isLinuxRunning) {
-            appendToTerminal("Linux is already running!\n");
-            return;
-        }
-        
-        appendToTerminal("\n[Starting Alpine Linux...]\n");
-        
+    private void runSetup() {
+        appendToTerminal("\n[Running Arch Linux setup...]\n");
         new Thread(() -> {
             try {
-                // نسخ الملفات
                 copyAssetToFile("proot", "proot");
-                copyAssetToFile("start-linux.sh", "start-linux.sh");
+                copyAssetToFile("setup-arch.sh", "setup-arch.sh");
                 
-                // فك ضغط rootfs إذا لم يكن موجوداً
-                File rootfsDir = new File(getFilesDir(), "rootfs");
-                if (!rootfsDir.exists() || rootfsDir.list().length == 0) {
-                    appendToTerminal("[1/3] Extracting rootfs (first time, please wait)...\n");
-                    extractRootfs();
-                }
+                String scriptPath = getFilesDir() + "/setup-arch.sh";
+                Process process = Runtime.getRuntime().exec(new String[]{"/system/bin/sh", scriptPath});
                 
-                appendToTerminal("[2/3] Setting up environment...\n");
-                
-                // تشغيل السكربت
-                String scriptPath = getFilesDir() + "/start-linux.sh";
-                String appDir = getFilesDir().getAbsolutePath();
-                
-                appendToTerminal("[3/3] Starting Alpine...\n");
-                
-                linuxProcess = Runtime.getRuntime().exec(new String[]{
-                    "/system/bin/sh", scriptPath, appDir
-                });
-                
-                // قراءة المخرجات
-                BufferedReader reader = new BufferedReader(new InputStreamReader(linuxProcess.getInputStream()));
-                BufferedReader errorReader = new BufferedReader(new InputStreamReader(linuxProcess.getErrorStream()));
-                
+                BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
                 String line;
                 while ((line = reader.readLine()) != null) {
                     final String output = line;
                     mainHandler.post(() -> outputText.append(output + "\n"));
                 }
-                while ((line = errorReader.readLine()) != null) {
-                    final String output = line;
-                    mainHandler.post(() -> outputText.append("[ERR] " + output + "\n"));
-                }
-                
-                linuxProcess.waitFor();
-                isLinuxRunning = false;
-                appendToTerminal("\n[Linux session ended]\n");
-                
+                process.waitFor();
+                appendToTerminal("\n✓ Setup complete! Press 'Start Linux' to run.\n");
             } catch (Exception e) {
                 appendToTerminal("Error: " + e.getMessage() + "\n");
-                isLinuxRunning = false;
             }
         }).start();
-        
-        isLinuxRunning = true;
     }
     
-    private void stopLinux() {
-        if (linuxProcess != null) {
-            appendToTerminal("\n[Stopping Linux...]\n");
-            linuxProcess.destroy();
-            isLinuxRunning = false;
-        } else {
-            appendToTerminal("No Linux process running.\n");
-        }
-    }
-    
-    private void extractRootfs() {
-        try {
-            File rootfsDir = new File(getFilesDir(), "rootfs");
-            rootfsDir.mkdirs();
-            
-            String tarPath = getFilesDir() + "/rootfs.tar.gz";
-            copyAssetToFile("rootfs.tar.gz", "rootfs.tar.gz");
-            
-            Process process = Runtime.getRuntime().exec(new String[]{
-                "/system/bin/sh", "-c", "tar -xzf " + tarPath + " -C " + rootfsDir.getAbsolutePath() + " 2>&1"
-            });
-            
-            BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
-            String line;
-            while ((line = reader.readLine()) != null) {
-                final String output = line;
-                mainHandler.post(() -> outputText.append(output + "\n"));
+    private void startLinux() {
+        appendToTerminal("\n[Starting Arch Linux...]\n");
+        new Thread(() -> {
+            try {
+                copyAssetToFile("proot", "proot");
+                copyAssetToFile("start-linux.sh", "start-linux.sh");
+                
+                String scriptPath = getFilesDir() + "/start-linux.sh";
+                linuxProcess = Runtime.getRuntime().exec(new String[]{"/system/bin/sh", scriptPath});
+                
+                BufferedReader reader = new BufferedReader(new InputStreamReader(linuxProcess.getInputStream()));
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    final String output = line;
+                    mainHandler.post(() -> outputText.append(output + "\n"));
+                }
+                linuxProcess.waitFor();
+            } catch (Exception e) {
+                appendToTerminal("Error: " + e.getMessage() + "\n");
             }
-            process.waitFor();
-            
-            // حذف الملف المضغوط بعد فك الضغط
-            new File(tarPath).delete();
-            
-            appendToTerminal("✓ Rootfs extracted successfully!\n");
-            
-        } catch (Exception e) {
-            appendToTerminal("Extract error: " + e.getMessage() + "\n");
-        }
+        }).start();
     }
     
     private void copyAssetToFile(String assetName, String destName) {
@@ -225,24 +167,12 @@ public class MainActivity extends AppCompatActivity {
             try {
                 Process process = Runtime.getRuntime().exec(new String[]{"/system/bin/sh", "-c", command});
                 BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
-                BufferedReader errorReader = new BufferedReader(new InputStreamReader(process.getErrorStream()));
-                
-                StringBuilder output = new StringBuilder();
                 String line;
                 while ((line = reader.readLine()) != null) {
-                    output.append(line).append("\n");
+                    final String output = line;
+                    mainHandler.post(() -> outputText.append(output + "\n"));
                 }
-                while ((line = errorReader.readLine()) != null) {
-                    output.append("[ERR] ").append(line).append("\n");
-                }
-                
                 process.waitFor();
-                String finalOutput = output.toString();
-                mainHandler.post(() -> {
-                    outputText.append(finalOutput);
-                    scrollView.fullScroll(View.FOCUS_DOWN);
-                });
-                
             } catch (Exception e) {
                 appendToTerminal("Error: " + e.getMessage() + "\n");
             }
