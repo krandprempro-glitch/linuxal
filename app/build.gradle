@@ -46,3 +46,18 @@ dependencies {
     
     coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.0.4'
 }
+android {
+    sourceSets {
+        main {
+            jniLibs.srcDirs = ['src/main/jniLibs']
+        }
+    }
+}
+
+android {
+    sourceSets {
+        main {
+            jniLibs.srcDirs = ['src/main/jniLibs']
+        }
+    }
+}
