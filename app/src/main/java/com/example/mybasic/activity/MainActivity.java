@@ -20,6 +20,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         
+        // واجهة المستخدم
         LinearLayout layout = new LinearLayout(this);
         layout.setOrientation(LinearLayout.VERTICAL);
         layout.setPadding(30, 50, 30, 30);
@@ -54,12 +55,6 @@ public class MainActivity extends AppCompatActivity {
         clearButton.setTextColor(Color.WHITE);
         buttonRow.addView(clearButton);
         
-        Button setupButton = new Button(this);
-        setupButton.setText("🔧 Setup Arch");
-        setupButton.setBackgroundColor(Color.rgb(255, 165, 0));
-        setupButton.setTextColor(Color.BLACK);
-        buttonRow.addView(setupButton);
-        
         Button linuxButton = new Button(this);
         linuxButton.setText("🐧 Start Linux");
         linuxButton.setBackgroundColor(Color.BLUE);
@@ -85,51 +80,39 @@ public class MainActivity extends AppCompatActivity {
         
         runButton.setOnClickListener(v -> executeCommand());
         clearButton.setOnClickListener(v -> outputText.setText(""));
-        setupButton.setOnClickListener(v -> runSetup());
         linuxButton.setOnClickListener(v -> startLinux());
-    }
-    
-    private void runSetup() {
-        appendToTerminal("\n[Running Arch Linux setup...]\n");
-        new Thread(() -> {
-            try {
-                copyAssetToFile("proot", "proot");
-                copyAssetToFile("setup-arch.sh", "setup-arch.sh");
-                
-                String scriptPath = getFilesDir() + "/setup-arch.sh";
-                Process process = Runtime.getRuntime().exec(new String[]{"/system/bin/sh", scriptPath});
-                
-                BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    final String output = line;
-                    mainHandler.post(() -> outputText.append(output + "\n"));
-                }
-                process.waitFor();
-                appendToTerminal("\n✓ Setup complete! Press 'Start Linux' to run.\n");
-            } catch (Exception e) {
-                appendToTerminal("Error: " + e.getMessage() + "\n");
-            }
-        }).start();
     }
     
     private void startLinux() {
         appendToTerminal("\n[Starting Arch Linux...]\n");
+        
         new Thread(() -> {
             try {
+                // نسخ proot من assets
                 copyAssetToFile("proot", "proot");
                 copyAssetToFile("start-linux.sh", "start-linux.sh");
                 
+                // تشغيل السكربت
                 String scriptPath = getFilesDir() + "/start-linux.sh";
                 linuxProcess = Runtime.getRuntime().exec(new String[]{"/system/bin/sh", scriptPath});
                 
+                // قراءة المخرجات
                 BufferedReader reader = new BufferedReader(new InputStreamReader(linuxProcess.getInputStream()));
+                BufferedReader errorReader = new BufferedReader(new InputStreamReader(linuxProcess.getErrorStream()));
+                
                 String line;
                 while ((line = reader.readLine()) != null) {
                     final String output = line;
                     mainHandler.post(() -> outputText.append(output + "\n"));
                 }
+                while ((line = errorReader.readLine()) != null) {
+                    final String output = line;
+                    mainHandler.post(() -> outputText.append("[ERR] " + output + "\n"));
+                }
+                
                 linuxProcess.waitFor();
+                appendToTerminal("\n[Linux session ended]\n");
+                
             } catch (Exception e) {
                 appendToTerminal("Error: " + e.getMessage() + "\n");
             }
@@ -150,6 +133,7 @@ public class MainActivity extends AppCompatActivity {
                 in.close();
                 out.close();
                 destFile.setExecutable(true);
+                appendToTerminal("✓ Copied: " + assetName + "\n");
             }
         } catch (Exception e) {
             appendToTerminal("Failed to copy: " + assetName + "\n");
