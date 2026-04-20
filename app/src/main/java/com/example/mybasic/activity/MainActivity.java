@@ -3,32 +3,26 @@ package com.example.mybasic.activity;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
-import android.text.method.ScrollingMovementMethod;
 import android.view.KeyEvent;
-import android.view.View;
 import android.view.inputmethod.EditorInfo;
-import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageButton;
-import android.widget.LinearLayout;
-import android.widget.ScrollView;
 import android.widget.TextView;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.FileWriter;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
+import com.termux.view.TerminalView;
+import com.termux.terminal.TerminalSession;
+import com.termux.terminal.TerminalSessionClient;
+import java.io.*;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements TerminalSessionClient {
+    
+    private TerminalView terminalView;
+    private TerminalSession terminalSession;
     private EditText inputCommand;
-    private TextView outputText;
-    private ScrollView scrollView;
     private Handler mainHandler;
     private Process linuxProcess;
+    private String currentDir = "/data/data/com.example.mybasic.activity/files";
     
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -38,21 +32,17 @@ public class MainActivity extends AppCompatActivity {
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
         
+        terminalView = findViewById(R.id.terminal_view);
         inputCommand = findViewById(R.id.input_command);
-        outputText = findViewById(R.id.terminal_output);
-        scrollView = findViewById(R.id.terminal_scroll);
         ImageButton sendButton = findViewById(R.id.send_button);
         
-        outputText.setTextColor(0xFFFFFFFF);
-        outputText.setTextSize(13);
-        outputText.setTypeface(android.graphics.Typeface.MONOSPACE);
-        outputText.setMovementMethod(new ScrollingMovementMethod());
-        outputText.setText("LinuxAL Terminal Ready.\n\n");
-        
-        inputCommand.setTextColor(0xFFFFFFFF);
-        inputCommand.setHintTextColor(0xFF888888);
-        
         mainHandler = new Handler(Looper.getMainLooper());
+        
+        // إعداد المحطة الطرفية
+        String[] env = {"TERM=xterm-256color", "PATH=" + System.getenv("PATH")};
+        terminalSession = new TerminalSession(currentDir, "sh", env, this);
+        terminalView.attachSession(terminalSession);
+        terminalView.setTextSize(13);
         
         sendButton.setOnClickListener(v -> executeCommand());
         
@@ -76,7 +66,7 @@ public class MainActivity extends AppCompatActivity {
                 copyAssetToFile("proot", "proot");
                 copyAssetToFile("rootfs.tar.gz", "rootfs.tar.gz");
                 
-                File rootfsDir = new File(getFilesDir(), "rootfs");
+                File rootfsDir = new File(currentDir, "rootfs");
                 if (!rootfsDir.exists() || rootfsDir.list().length == 0) {
                     appendToTerminal("Extracting rootfs...\n");
                     extractRootfs();
@@ -84,9 +74,9 @@ public class MainActivity extends AppCompatActivity {
                 
                 createStartScript();
                 
-                String scriptPath = getFilesDir() + "/start-linux.sh";
+                String scriptPath = currentDir + "/start-linux.sh";
                 ProcessBuilder pb = new ProcessBuilder("/system/bin/sh", scriptPath);
-                pb.directory(getFilesDir());
+                pb.directory(new File(currentDir));
                 pb.redirectErrorStream(true);
                 linuxProcess = pb.start();
                 
@@ -94,7 +84,7 @@ public class MainActivity extends AppCompatActivity {
                 String line;
                 while ((line = reader.readLine()) != null) {
                     final String output = line;
-                    mainHandler.post(() -> outputText.append(output + "\n"));
+                    mainHandler.post(() -> terminalSession.write(output + "\n"));
                 }
                 
                 linuxProcess.waitFor();
@@ -107,8 +97,8 @@ public class MainActivity extends AppCompatActivity {
     
     private void extractRootfs() {
         try {
-            String tarPath = getFilesDir() + "/rootfs.tar.gz";
-            String destPath = getFilesDir() + "/rootfs";
+            String tarPath = currentDir + "/rootfs.tar.gz";
+            String destPath = currentDir + "/rootfs";
             
             Process process = Runtime.getRuntime().exec(new String[]{
                 "/system/bin/sh", "-c", "mkdir -p " + destPath + " && cd " + destPath + " && tar -xzf " + tarPath
@@ -124,14 +114,14 @@ public class MainActivity extends AppCompatActivity {
     
     private void createStartScript() {
         try {
-            String scriptPath = getFilesDir() + "/start-linux.sh";
+            String scriptPath = currentDir + "/start-linux.sh";
             FileWriter fw = new FileWriter(scriptPath);
             fw.write("#!/system/bin/sh\n\n");
             fw.write("echo '========================================='\n");
             fw.write("echo '   LinuxAL - Alpine Linux'\n");
             fw.write("echo '========================================='\n\n");
-            fw.write("PROOT_PATH=\"" + getFilesDir() + "/proot\"\n");
-            fw.write("ROOTFS_PATH=\"" + getFilesDir() + "/rootfs\"\n\n");
+            fw.write("PROOT_PATH=\"" + currentDir + "/proot\"\n");
+            fw.write("ROOTFS_PATH=\"" + currentDir + "/rootfs\"\n\n");
             fw.write("if [ ! -f \"$PROOT_PATH\" ]; then\n");
             fw.write("    echo '❌ proot not found!'\n");
             fw.write("    exit 1\n");
@@ -161,7 +151,7 @@ public class MainActivity extends AppCompatActivity {
     
     private void copyAssetToFile(String assetName, String destName) {
         try {
-            File destFile = new File(getFilesDir(), destName);
+            File destFile = new File(currentDir, destName);
             if (!destFile.exists()) {
                 InputStream in = getAssets().open(assetName);
                 OutputStream out = new FileOutputStream(destFile);
@@ -186,37 +176,79 @@ public class MainActivity extends AppCompatActivity {
         String command = inputCommand.getText().toString().trim();
         if (command.isEmpty()) return;
         
-        appendToTerminal("$ " + command + "\n");
+        terminalSession.write(command + "\n");
         inputCommand.setText("");
-        
-        new Thread(() -> {
-            try {
-                Process process = Runtime.getRuntime().exec(new String[]{"/system/bin/sh", "-c", command});
-                BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    final String output = line;
-                    mainHandler.post(() -> outputText.append(output + "\n"));
-                }
-                process.waitFor();
-            } catch (Exception e) {
-                appendToTerminal("Error: " + e.getMessage() + "\n");
-            }
-        }).start();
     }
     
     private void appendToTerminal(String text) {
-        mainHandler.post(() -> {
-            outputText.append(text);
-            scrollView.fullScroll(View.FOCUS_DOWN);
-        });
+        mainHandler.post(() -> terminalSession.write(text));
     }
+    
+    // TerminalSessionClient methods
+    @Override
+    public void onTextChanged(TerminalSession session) {
+        runOnUiThread(() -> terminalView.onScreenUpdated());
+    }
+    
+    @Override
+    public void onTitleChanged(TerminalSession session) {}
+    
+    @Override
+    public void onSessionFinished(TerminalSession session) {}
+    
+    @Override
+    public void onCopyTextToClipboard(TerminalSession session, String text) {}
+    
+    @Override
+    public void onPasteTextFromClipboard(TerminalSession session) {}
+    
+    @Override
+    public void onBell() {}
+    
+    @Override
+    public void onColorsChanged(TerminalSession session) {}
+    
+    @Override
+    public void onTerminalCursorStateChange(boolean state) {}
+    
+    @Override
+    public void setTerminalShellPid(int pid) {}
+    
+    @Override
+    public void onLogError(String message, Exception e) {}
+    
+    @Override
+    public void onKeyDown(int keyCode, int[] metaKeys) {}
+    
+    @Override
+    public boolean onKeyUp(int keyCode, int[] metaKeys) { return false; }
+    
+    @Override
+    public boolean readme() { return false; }
+    
+    @Override
+    public boolean shouldWatchOutput() { return true; }
+    
+    @Override
+    public void onSingleTapUp() {}
+    
+    @Override
+    public void onLongPress() {}
+    
+    @Override
+    public boolean onKeyDown(int keyCode, KeyEvent event, TerminalSession session) { return false; }
+    
+    @Override
+    public boolean onKeyUp(int keyCode, KeyEvent event, TerminalSession session) { return false; }
     
     @Override
     protected void onDestroy() {
         super.onDestroy();
         if (linuxProcess != null) {
             linuxProcess.destroy();
+        }
+        if (terminalSession != null) {
+            terminalSession.finish();
         }
     }
 }

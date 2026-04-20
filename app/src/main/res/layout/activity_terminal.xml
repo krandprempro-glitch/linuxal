@@ -16,33 +16,19 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="LinuxAL"
-            android:textColor="#00FF00"
+            android:textColor="#FFFFFF"
             android:textSize="18sp"
             android:textStyle="bold"
             android:layout_gravity="center" />
 
     </androidx.appcompat.widget.Toolbar>
 
-    <ScrollView
-        android:id="@+id/terminal_scroll"
+    <com.termux.view.TerminalView
+        android:id="@+id/terminal_view"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:background="#0D0D0D"
-        android:scrollbars="vertical">
-
-        <TextView
-            android:id="@+id/terminal_output"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:fontFamily="monospace"
-            android:textColor="#00FF00"
-            android:textSize="13sp"
-            android:lineSpacingExtra="4dp"
-            android:padding="12dp"
-            android:text="" />
-
-    </ScrollView>
+        android:background="#0D0D0D" />
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -55,7 +41,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="$ "
-            android:textColor="#00FF00"
+            android:textColor="#FFFFFF"
             android:textSize="14sp"
             android:textStyle="bold"
             android:layout_gravity="center_vertical" />
@@ -66,10 +52,11 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:background="@null"
-            android:textColor="#00FF00"
+            android:textColor="#FFFFFF"
             android:textSize="14sp"
             android:fontFamily="monospace"
             android:hint="Type command..."
+            android:textColorHint="#888888"
             android:imeOptions="actionSend"
             android:inputType="text"
             android:singleLine="true" />
@@ -80,7 +67,7 @@
             android:layout_height="40dp"
             android:src="@android:drawable/ic_menu_send"
             android:background="?attr/selectableItemBackground"
-            android:tint="#00FF00" />
+            android:tint="#FFFFFF" />
 
     </LinearLayout>
 

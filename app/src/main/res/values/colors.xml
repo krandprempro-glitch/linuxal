@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="terminal_bg">#0D0D0D</color>
-    <color name="terminal_text">#00FF00</color>
+    <color name="terminal_text">#FFFFFF</color>
     <color name="terminal_input_bg">#1a1a1a</color>
     <color name="terminal_primary">#00FF00</color>
+    <color name="black">#000000</color>
+    <color name="white">#FFFFFF</color>
 </resources>
