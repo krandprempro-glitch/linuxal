@@ -1,0 +1,48 @@
+plugins {
+    alias(libs.plugins.android.application)
+}
+
+android {
+    namespace 'com.example.mybasic.activity'
+    compileSdk 36
+
+    ndkVersion = "29.0.14206865"
+
+    defaultConfig {
+        applicationId 'com.example.mybasic.activity'
+        minSdk 24
+        targetSdk 34
+        versionCode 1
+        versionName '1.0'
+
+        testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
+        
+        ndk {
+            abiFilters 'arm64-v8a'
+        }
+    }
+
+    buildFeatures {
+        viewBinding true
+    }
+
+    compileOptions {
+        coreLibraryDesugaringEnabled true
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    implementation libs.androidx.core
+    implementation libs.androidx.appcompat
+    implementation libs.material
+    implementation libs.androidx.constraintlayout
+    implementation project(':terminal-emulator')
+    implementation project(':terminal-view')
+    implementation project(':termux-shared')
+    implementation fileTree(dir: "libs", include: ["*.aar"])
+    implementation 'com.google.guava:listenablefuture:9999.0-empty-to-avoid-conflict-with-guava'
+    
+    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.0.4'
+}

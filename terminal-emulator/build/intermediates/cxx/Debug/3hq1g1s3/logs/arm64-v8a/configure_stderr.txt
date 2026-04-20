@@ -1,0 +1,1 @@
+/data/user/0/com.tom.rv2ide/files/home/android-sdk/ndk/29.0.14206865/ndk-build[3]: /data/user/0/com.tom.rv2ide/files/home/android-sdk/ndk/29.0.14206865/build/ndk-build: No such file or directory

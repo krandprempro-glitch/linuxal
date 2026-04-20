@@ -1,0 +1,119 @@
+[
+  {
+    "level_": 0,
+    "message_": "Start JSON generation. Platform version: 21 min SDK version: arm64-v8a",
+    "file_": "/storage/emulated/0/Download/MyBasicActivity/terminal-emulator/src/main/jni/Android.mk",
+    "tag_": "debug|arm64-v8a",
+    "diagnosticCode_": 0,
+    "memoizedIsInitialized": 1,
+    "unknownFields": {
+      "fields": {}
+    },
+    "memoizedSize": -1,
+    "memoizedHashCode": 0
+  },
+  {
+    "level_": 0,
+    "message_": "rebuilding JSON /storage/emulated/0/Download/MyBasicActivity/terminal-emulator/build/.cxx/Debug/3hq1g1s3/arm64-v8a/android_gradle_build.json due to:",
+    "file_": "/storage/emulated/0/Download/MyBasicActivity/terminal-emulator/src/main/jni/Android.mk",
+    "tag_": "debug|arm64-v8a",
+    "diagnosticCode_": 0,
+    "memoizedIsInitialized": 1,
+    "unknownFields": {
+      "fields": {}
+    },
+    "memoizedSize": -1,
+    "memoizedHashCode": 0
+  },
+  {
+    "level_": 0,
+    "message_": "- no fingerprint file, will remove stale configuration folder",
+    "file_": "/storage/emulated/0/Download/MyBasicActivity/terminal-emulator/src/main/jni/Android.mk",
+    "tag_": "debug|arm64-v8a",
+    "diagnosticCode_": 0,
+    "memoizedIsInitialized": 1,
+    "unknownFields": {
+      "fields": {}
+    },
+    "memoizedSize": -1,
+    "memoizedHashCode": 0
+  },
+  {
+    "level_": 0,
+    "message_": "removing stale contents from \u0027/storage/emulated/0/Download/MyBasicActivity/terminal-emulator/build/.cxx/Debug/3hq1g1s3/arm64-v8a\u0027",
+    "file_": "/storage/emulated/0/Download/MyBasicActivity/terminal-emulator/src/main/jni/Android.mk",
+    "tag_": "debug|arm64-v8a",
+    "diagnosticCode_": 0,
+    "memoizedIsInitialized": 1,
+    "unknownFields": {
+      "fields": {}
+    },
+    "memoizedSize": -1,
+    "memoizedHashCode": 0
+  },
+  {
+    "level_": 0,
+    "message_": "created folder \u0027/storage/emulated/0/Download/MyBasicActivity/terminal-emulator/build/.cxx/Debug/3hq1g1s3/arm64-v8a\u0027",
+    "file_": "/storage/emulated/0/Download/MyBasicActivity/terminal-emulator/src/main/jni/Android.mk",
+    "tag_": "debug|arm64-v8a",
+    "diagnosticCode_": 0,
+    "memoizedIsInitialized": 1,
+    "unknownFields": {
+      "fields": {}
+    },
+    "memoizedSize": -1,
+    "memoizedHashCode": 0
+  },
+  {
+    "level_": 0,
+    "message_": "executing ndkBuild /data/user/0/com.tom.rv2ide/files/home/android-sdk/ndk/29.0.14206865/ndk-build \\\n  NDK_PROJECT_PATH\u003dnull \\\n  APP_BUILD_SCRIPT\u003d/storage/emulated/0/Download/MyBasicActivity/terminal-emulator/src/main/jni/Android.mk \\\n  APP_ABI\u003darm64-v8a \\\n  NDK_ALL_ABIS\u003darm64-v8a \\\n  NDK_DEBUG\u003d1 \\\n  APP_PLATFORM\u003dandroid-21 \\\n  NDK_OUT\u003d/storage/emulated/0/Download/MyBasicActivity/terminal-emulator/build/intermediates/cxx/Debug/3hq1g1s3/obj \\\n  NDK_LIBS_OUT\u003d/storage/emulated/0/Download/MyBasicActivity/terminal-emulator/build/intermediates/cxx/Debug/3hq1g1s3/lib \\\n  APP_CFLAGS+\u003d-std\u003dc11 \\\n  APP_CFLAGS+\u003d-Wall \\\n  APP_CFLAGS+\u003d-Wextra \\\n  APP_CFLAGS+\u003d-Werror \\\n  APP_CFLAGS+\u003d-Os \\\n  APP_CFLAGS+\u003d-fno-stack-protector \\\n  APP_CFLAGS+\u003d-Wl,--gc-sections \\\n  APP_SHORT_COMMANDS\u003dfalse \\\n  LOCAL_SHORT_COMMANDS\u003dfalse \\\n  -B \\\n  -n\n",
+    "file_": "/storage/emulated/0/Download/MyBasicActivity/terminal-emulator/src/main/jni/Android.mk",
+    "tag_": "debug|arm64-v8a",
+    "diagnosticCode_": 0,
+    "memoizedIsInitialized": 1,
+    "unknownFields": {
+      "fields": {}
+    },
+    "memoizedSize": -1,
+    "memoizedHashCode": 0
+  },
+  {
+    "level_": 0,
+    "message_": "/data/user/0/com.tom.rv2ide/files/home/android-sdk/ndk/29.0.14206865/ndk-build \\\n  NDK_PROJECT_PATH\u003dnull \\\n  APP_BUILD_SCRIPT\u003d/storage/emulated/0/Download/MyBasicActivity/terminal-emulator/src/main/jni/Android.mk \\\n  APP_ABI\u003darm64-v8a \\\n  NDK_ALL_ABIS\u003darm64-v8a \\\n  NDK_DEBUG\u003d1 \\\n  APP_PLATFORM\u003dandroid-21 \\\n  NDK_OUT\u003d/storage/emulated/0/Download/MyBasicActivity/terminal-emulator/build/intermediates/cxx/Debug/3hq1g1s3/obj \\\n  NDK_LIBS_OUT\u003d/storage/emulated/0/Download/MyBasicActivity/terminal-emulator/build/intermediates/cxx/Debug/3hq1g1s3/lib \\\n  APP_CFLAGS+\u003d-std\u003dc11 \\\n  APP_CFLAGS+\u003d-Wall \\\n  APP_CFLAGS+\u003d-Wextra \\\n  APP_CFLAGS+\u003d-Werror \\\n  APP_CFLAGS+\u003d-Os \\\n  APP_CFLAGS+\u003d-fno-stack-protector \\\n  APP_CFLAGS+\u003d-Wl,--gc-sections \\\n  APP_SHORT_COMMANDS\u003dfalse \\\n  LOCAL_SHORT_COMMANDS\u003dfalse \\\n  -B \\\n  -n\n",
+    "file_": "/storage/emulated/0/Download/MyBasicActivity/terminal-emulator/src/main/jni/Android.mk",
+    "tag_": "debug|arm64-v8a",
+    "diagnosticCode_": 0,
+    "memoizedIsInitialized": 1,
+    "unknownFields": {
+      "fields": {}
+    },
+    "memoizedSize": -1,
+    "memoizedHashCode": 0
+  },
+  {
+    "level_": 0,
+    "message_": "Received process result: 126",
+    "file_": "/storage/emulated/0/Download/MyBasicActivity/terminal-emulator/src/main/jni/Android.mk",
+    "tag_": "debug|arm64-v8a",
+    "diagnosticCode_": 0,
+    "memoizedIsInitialized": 1,
+    "unknownFields": {
+      "fields": {}
+    },
+    "memoizedSize": -1,
+    "memoizedHashCode": 0
+  },
+  {
+    "level_": 0,
+    "message_": "JSON generation completed with problem. Exception: com.android.ide.common.process.ProcessException: C++ build system [configure] failed while executing:\n    /data/user/0/com.tom.rv2ide/files/home/android-sdk/ndk/29.0.14206865/ndk-build \\\n      NDK_PROJECT_PATH\u003dnull \\\n      APP_BUILD_SCRIPT\u003d/storage/emulated/0/Download/MyBasicActivity/terminal-emulator/src/main/jni/Android.mk \\\n      APP_ABI\u003darm64-v8a \\\n      NDK_ALL_ABIS\u003darm64-v8a \\\n      NDK_DEBUG\u003d1 \\\n      APP_PLATFORM\u003dandroid-21 \\\n      NDK_OUT\u003d/storage/emulated/0/Download/MyBasicActivity/terminal-emulator/build/intermediates/cxx/Debug/3hq1g1s3/obj \\\n      NDK_LIBS_OUT\u003d/storage/emulated/0/Download/MyBasicActivity/terminal-emulator/build/intermediates/cxx/Debug/3hq1g1s3/lib \\\n      APP_CFLAGS+\u003d-std\u003dc11 \\\n      APP_CFLAGS+\u003d-Wall \\\n      APP_CFLAGS+\u003d-Wextra \\\n      APP_CFLAGS+\u003d-Werror \\\n      APP_CFLAGS+\u003d-Os \\\n      APP_CFLAGS+\u003d-fno-stack-protector \\\n      APP_CFLAGS+\u003d-Wl,--gc-sections \\\n      APP_SHORT_COMMANDS\u003dfalse \\\n      LOCAL_SHORT_COMMANDS\u003dfalse \\\n      -B \\\n      -n\n  from /storage/emulated/0/Download/MyBasicActivity/terminal-emulator\n/data/user/0/com.tom.rv2ide/files/home/android-sdk/ndk/29.0.14206865/ndk-build[3]: /data/user/0/com.tom.rv2ide/files/home/android-sdk/ndk/29.0.14206865/build/ndk-build: No such file or directory",
+    "file_": "/storage/emulated/0/Download/MyBasicActivity/terminal-emulator/src/main/jni/Android.mk",
+    "tag_": "debug|arm64-v8a",
+    "diagnosticCode_": 0,
+    "memoizedIsInitialized": 1,
+    "unknownFields": {
+      "fields": {}
+    },
+    "memoizedSize": -1,
+    "memoizedHashCode": 0
+  }
+]
