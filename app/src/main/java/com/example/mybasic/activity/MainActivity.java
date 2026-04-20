@@ -1,6 +1,8 @@
 package com.example.mybasic.activity;
 
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.View;
 import android.widget.*;
 import android.graphics.Color;
@@ -11,6 +13,7 @@ public class MainActivity extends AppCompatActivity {
     private EditText inputCommand;
     private TextView outputText;
     private ScrollView scrollView;
+    private Handler mainHandler;
     
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -69,6 +72,7 @@ public class MainActivity extends AppCompatActivity {
             LinearLayout.LayoutParams.MATCH_PARENT, 0, 1));
         
         setContentView(layout);
+        mainHandler = new Handler(Looper.getMainLooper());
         
         runButton.setOnClickListener(v -> executeCommand());
         clearButton.setOnClickListener(v -> outputText.setText(""));
@@ -76,11 +80,24 @@ public class MainActivity extends AppCompatActivity {
     }
     
     private void startLinux() {
-        outputText.append("\n[Starting Linux with proot...]\n");
+        appendToTerminal("\n[Starting Linux with proot...]\n");
         
         new Thread(() -> {
             try {
-                String scriptPath = copyAssetToFile("start-linux.sh");
+                // نسخ الملفات
+                copyAssetToFile("proot", "proot");
+                copyAssetToFile("start-linux.sh", "start-linux.sh");
+                
+                // فك ضغط rootfs
+                File rootfsDir = new File(getFilesDir(), "rootfs");
+                if (!rootfsDir.exists()) {
+                    appendToTerminal("[1/2] Extracting rootfs (first time, please wait)...\n");
+                    extractRootfs();
+                }
+                
+                // تشغيل السكربت
+                appendToTerminal("[2/2] Starting Ubuntu...\n");
+                String scriptPath = getFilesDir() + "/start-linux.sh";
                 Process process = Runtime.getRuntime().exec(new String[]{"/system/bin/sh", scriptPath});
                 
                 BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
@@ -93,27 +110,57 @@ public class MainActivity extends AppCompatActivity {
                 process.waitFor();
                 
             } catch (Exception e) {
-                runOnUiThread(() -> outputText.append("Error: " + e.getMessage() + "\n"));
+                appendToTerminal("Error: " + e.getMessage() + "\n");
             }
         }).start();
     }
     
-    private String copyAssetToFile(String assetName) {
+    private void extractRootfs() {
         try {
-            File destFile = new File(getFilesDir(), assetName);
-            InputStream in = getAssets().open(assetName);
-            OutputStream out = new FileOutputStream(destFile);
-            byte[] buffer = new byte[1024];
-            int read;
-            while ((read = in.read(buffer)) != -1) {
-                out.write(buffer, 0, read);
+            File rootfsDir = new File(getFilesDir(), "rootfs");
+            rootfsDir.mkdirs();
+            
+            String tarPath = getFilesDir() + "/rootfs.tar.xz";
+            copyAssetToFile("rootfs.tar.xz", "rootfs.tar.xz");
+            
+            Process process = Runtime.getRuntime().exec(new String[]{
+                "/system/bin/sh", "-c", "tar -xf " + tarPath + " -C " + rootfsDir.getAbsolutePath() + " 2>&1"
+            });
+            
+            BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+            String line;
+            while ((line = reader.readLine()) != null) {
+                final String output = line;
+                runOnUiThread(() -> outputText.append(output + "\n"));
             }
-            in.close();
-            out.close();
-            destFile.setExecutable(true);
-            return destFile.getAbsolutePath();
+            process.waitFor();
+            
+            // حذف الملف المضغوط بعد فك الضغط
+            new File(tarPath).delete();
+            
         } catch (Exception e) {
-            return "";
+            e.printStackTrace();
+        }
+    }
+    
+    private void copyAssetToFile(String assetName, String destName) {
+        try {
+            File destFile = new File(getFilesDir(), destName);
+            if (!destFile.exists()) {
+                InputStream in = getAssets().open(assetName);
+                OutputStream out = new FileOutputStream(destFile);
+                byte[] buffer = new byte[8192];
+                int read;
+                while ((read = in.read(buffer)) != -1) {
+                    out.write(buffer, 0, read);
+                }
+                in.close();
+                out.close();
+                destFile.setExecutable(true);
+                appendToTerminal("✓ Copied: " + assetName + "\n");
+            }
+        } catch (Exception e) {
+            appendToTerminal("✗ Failed to copy: " + assetName + " - " + e.getMessage() + "\n");
         }
     }
     
@@ -121,7 +168,7 @@ public class MainActivity extends AppCompatActivity {
         String command = inputCommand.getText().toString().trim();
         if (command.isEmpty()) return;
         
-        outputText.append("$ " + command + "\n");
+        appendToTerminal("$ " + command + "\n");
         inputCommand.setText("");
         
         new Thread(() -> {
@@ -147,8 +194,19 @@ public class MainActivity extends AppCompatActivity {
                 });
                 
             } catch (Exception e) {
-                runOnUiThread(() -> outputText.append("Error: " + e.getMessage() + "\n"));
+                appendToTerminal("Error: " + e.getMessage() + "\n");
             }
         }).start();
+    }
+    
+    private void appendToTerminal(String text) {
+        mainHandler.post(() -> {
+            outputText.append(text);
+            scrollView.fullScroll(View.FOCUS_DOWN);
+        });
+    }
+    
+    private void runOnUiThread(Runnable action) {
+        mainHandler.post(action);
     }
 }
