@@ -1,18 +1,12 @@
 package com.example.mybasic.activity;
 
-import android.Manifest;
-import android.content.pm.PackageManager;
-import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.View;
 import android.widget.*;
 import android.graphics.Color;
-import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.app.ActivityCompat;
-import androidx.core.content.ContextCompat;
 import java.io.*;
 
 public class MainActivity extends AppCompatActivity {
@@ -20,18 +14,12 @@ public class MainActivity extends AppCompatActivity {
     private TextView outputText;
     private ScrollView scrollView;
     private Handler mainHandler;
-    
-    private static final int PERMISSION_REQUEST_CODE = 100;
-    private String[] requiredPermissions = {
-        Manifest.permission.WRITE_EXTERNAL_STORAGE,
-        Manifest.permission.READ_EXTERNAL_STORAGE
-    };
+    private boolean isLinuxRunning = false;
+    private Process linuxProcess;
     
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        
-        checkAndRequestPermissions();
         
         LinearLayout layout = new LinearLayout(this);
         layout.setOrientation(LinearLayout.VERTICAL);
@@ -76,6 +64,13 @@ public class MainActivity extends AppCompatActivity {
         linuxButton.setPadding(20, 15, 20, 15);
         buttonRow.addView(linuxButton);
         
+        Button stopButton = new Button(this);
+        stopButton.setText("⏹️ Stop Linux");
+        stopButton.setBackgroundColor(Color.rgb(255, 165, 0));
+        stopButton.setTextColor(Color.WHITE);
+        stopButton.setPadding(20, 15, 20, 15);
+        buttonRow.addView(stopButton);
+        
         layout.addView(buttonRow);
         
         scrollView = new ScrollView(this);
@@ -96,54 +91,77 @@ public class MainActivity extends AppCompatActivity {
         runButton.setOnClickListener(v -> executeCommand());
         clearButton.setOnClickListener(v -> outputText.setText(""));
         linuxButton.setOnClickListener(v -> startLinux());
-    }
-    
-    private void checkAndRequestPermissions() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            boolean allGranted = true;
-            for (String permission : requiredPermissions) {
-                if (ContextCompat.checkSelfPermission(this, permission) != PackageManager.PERMISSION_GRANTED) {
-                    allGranted = false;
-                    break;
-                }
-            }
-            if (!allGranted) {
-                ActivityCompat.requestPermissions(this, requiredPermissions, PERMISSION_REQUEST_CODE);
-            }
-        }
+        stopButton.setOnClickListener(v -> stopLinux());
     }
     
     private void startLinux() {
+        if (isLinuxRunning) {
+            appendToTerminal("Linux is already running!\n");
+            return;
+        }
+        
         appendToTerminal("\n[Starting Alpine Linux...]\n");
         
         new Thread(() -> {
             try {
+                // نسخ الملفات
                 copyAssetToFile("proot", "proot");
                 copyAssetToFile("start-linux.sh", "start-linux.sh");
                 
+                // فك ضغط rootfs إذا لم يكن موجوداً
                 File rootfsDir = new File(getFilesDir(), "rootfs");
-                if (!rootfsDir.exists()) {
-                    appendToTerminal("[1/2] Extracting rootfs (first time, please wait)...\n");
+                if (!rootfsDir.exists() || rootfsDir.list().length == 0) {
+                    appendToTerminal("[1/3] Extracting rootfs (first time, please wait)...\n");
                     extractRootfs();
                 }
                 
-                appendToTerminal("[2/2] Starting Alpine...\n");
-                String scriptPath = getFilesDir() + "/start-linux.sh";
-                Process process = Runtime.getRuntime().exec(new String[]{"/system/bin/sh", scriptPath});
+                appendToTerminal("[2/3] Setting up environment...\n");
                 
-                BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+                // تشغيل السكربت
+                String scriptPath = getFilesDir() + "/start-linux.sh";
+                String appDir = getFilesDir().getAbsolutePath();
+                
+                appendToTerminal("[3/3] Starting Alpine...\n");
+                
+                linuxProcess = Runtime.getRuntime().exec(new String[]{
+                    "/system/bin/sh", scriptPath, appDir
+                });
+                
+                // قراءة المخرجات
+                BufferedReader reader = new BufferedReader(new InputStreamReader(linuxProcess.getInputStream()));
+                BufferedReader errorReader = new BufferedReader(new InputStreamReader(linuxProcess.getErrorStream()));
+                
                 String line;
                 while ((line = reader.readLine()) != null) {
                     final String output = line;
                     mainHandler.post(() -> outputText.append(output + "\n"));
                 }
+                while ((line = errorReader.readLine()) != null) {
+                    final String output = line;
+                    mainHandler.post(() -> outputText.append("[ERR] " + output + "\n"));
+                }
                 
-                process.waitFor();
+                linuxProcess.waitFor();
+                isLinuxRunning = false;
+                appendToTerminal("\n[Linux session ended]\n");
                 
             } catch (Exception e) {
-                mainHandler.post(() -> outputText.append("Error: " + e.getMessage() + "\n"));
+                appendToTerminal("Error: " + e.getMessage() + "\n");
+                isLinuxRunning = false;
             }
         }).start();
+        
+        isLinuxRunning = true;
+    }
+    
+    private void stopLinux() {
+        if (linuxProcess != null) {
+            appendToTerminal("\n[Stopping Linux...]\n");
+            linuxProcess.destroy();
+            isLinuxRunning = false;
+        } else {
+            appendToTerminal("No Linux process running.\n");
+        }
     }
     
     private void extractRootfs() {
@@ -155,7 +173,7 @@ public class MainActivity extends AppCompatActivity {
             copyAssetToFile("rootfs.tar.gz", "rootfs.tar.gz");
             
             Process process = Runtime.getRuntime().exec(new String[]{
-                "/system/bin/sh", "-c", "tar -xzf " + tarPath + " -C " + rootfsDir.getAbsolutePath()
+                "/system/bin/sh", "-c", "tar -xzf " + tarPath + " -C " + rootfsDir.getAbsolutePath() + " 2>&1"
             });
             
             BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
@@ -166,10 +184,13 @@ public class MainActivity extends AppCompatActivity {
             }
             process.waitFor();
             
+            // حذف الملف المضغوط بعد فك الضغط
             new File(tarPath).delete();
             
+            appendToTerminal("✓ Rootfs extracted successfully!\n");
+            
         } catch (Exception e) {
-            mainHandler.post(() -> outputText.append("Extract error: " + e.getMessage() + "\n"));
+            appendToTerminal("Extract error: " + e.getMessage() + "\n");
         }
     }
     
@@ -187,10 +208,9 @@ public class MainActivity extends AppCompatActivity {
                 in.close();
                 out.close();
                 destFile.setExecutable(true);
-                mainHandler.post(() -> outputText.append("✓ Copied: " + assetName + "\n"));
             }
         } catch (Exception e) {
-            mainHandler.post(() -> outputText.append("✗ Failed to copy: " + assetName + "\n"));
+            appendToTerminal("Failed to copy: " + assetName + "\n");
         }
     }
     
@@ -224,7 +244,7 @@ public class MainActivity extends AppCompatActivity {
                 });
                 
             } catch (Exception e) {
-                mainHandler.post(() -> outputText.append("Error: " + e.getMessage() + "\n"));
+                appendToTerminal("Error: " + e.getMessage() + "\n");
             }
         }).start();
     }

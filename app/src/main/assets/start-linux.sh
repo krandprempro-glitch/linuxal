@@ -1,47 +1,50 @@
 #!/system/bin/sh
 
 echo "========================================="
-echo "   LinuxAL - Starting Linux"
+echo "   LinuxAL - Starting Alpine Linux"
 echo "========================================="
 
-# إعداد المسارات
-PROOT_PATH="/data/data/com.termux/files/usr/assets/proot"
-ROOTFS_PATH="/data/data/com.termux/files/usr/assets/rootfs"
+# الحصول على مسار التطبيق (يتم تمريره من Java)
+APP_DIR="$1"
+if [ -z "$APP_DIR" ]; then
+    APP_DIR="/data/data/com.example.mybasic.activity/files"
+fi
 
-# التحقق من وجود الملفات
+PROOT_PATH="$APP_DIR/proot"
+ROOTFS_PATH="$APP_DIR/rootfs"
+
+echo "[1/4] Checking files..."
 if [ ! -f "$PROOT_PATH" ]; then
-    PROOT_PATH="/data/data/com.example.mybasic.activity/files/proot"
+    echo "ERROR: proot not found at $PROOT_PATH"
+    exit 1
 fi
 
 if [ ! -d "$ROOTFS_PATH" ]; then
-    ROOTFS_PATH="/data/data/com.example.mybasic.activity/files/rootfs"
-fi
-
-echo "[1/3] Checking proot..."
-if [ -f "$PROOT_PATH" ]; then
-    chmod +x $PROOT_PATH
-    echo "✓ proot found at: $PROOT_PATH"
-else
-    echo "✗ proot not found!"
+    echo "ERROR: rootfs not found at $ROOTFS_PATH"
     exit 1
 fi
 
-echo "[2/3] Checking rootfs..."
-if [ -d "$ROOTFS_PATH" ]; then
-    echo "✓ rootfs found at: $ROOTFS_PATH"
+echo "[2/4] Setting permissions..."
+chmod 755 "$PROOT_PATH" 2>/dev/null
+
+echo "[3/4] Testing proot..."
+if [ -x "$PROOT_PATH" ]; then
+    echo "✓ proot is executable"
 else
-    echo "✗ rootfs not found!"
+    echo "✗ proot is NOT executable"
     exit 1
 fi
 
-echo "[3/3] Starting Ubuntu..."
+echo "[4/4] Starting Alpine Linux..."
+echo "========================================="
+echo "   Type 'exit' to close"
 echo "========================================="
 
-# تشغيل Linux باستخدام proot
-$PROOT_PATH \
-  -R $ROOTFS_PATH \
+# تشغيل Alpine Linux
+exec "$PROOT_PATH" \
+  -R "$ROOTFS_PATH" \
   -b /dev \
   -b /proc \
   -b /sys \
-  -b /data/data/com.example.mybasic.activity/files/home:/root \
-  /bin/bash -c "echo 'Welcome to Ubuntu on Android!'; exec /bin/bash"
+  -b /sdcard:/mnt/sdcard \
+  /bin/sh -c "echo 'Welcome to Alpine Linux!'; exec /bin/sh"
