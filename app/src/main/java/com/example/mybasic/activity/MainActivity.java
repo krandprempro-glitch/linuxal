@@ -1,5 +1,6 @@
 package com.example.mybasic.activity;
 
+import android.graphics.Color;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -52,6 +53,15 @@ public class MainActivity extends AppCompatActivity implements TerminalSessionCl
         terminalSession = new TerminalSession(currentDir, "sh", env, this);
         terminalView.attachSession(terminalSession);
         terminalView.setTextSize(14);
+        
+        // ✅ تغيير لون النص إلى الأبيض
+        terminalView.setTextColor(Color.WHITE);  // النص أبيض
+        
+        // تغيير لون الخلفية إلى الأسود الداكن
+        terminalView.setBackgroundColor(Color.parseColor("#1E1E1E"));  // خلفية سوداء داكنة
+        
+        // تغيير لون المؤشر
+        terminalView.setCursorColor(Color.parseColor("#FFFFFF"));  // مؤشر أبيض
         
         sendButton.setOnClickListener(v -> executeCommand());
         
@@ -226,4 +236,4 @@ public class MainActivity extends AppCompatActivity implements TerminalSessionCl
             terminalSession.finish();
         }
     }
-}
+    }
