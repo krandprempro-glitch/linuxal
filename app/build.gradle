@@ -21,8 +21,10 @@ android {
     }
 
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_17
-        targetCompatibility JavaVersion.VERSION_17
+        // ✅ تفعيل desugaring لدعم Java 8+
+        coreLibraryDesugaringEnabled true
+        sourceCompatibility JavaVersion.VERSION_11
+        targetCompatibility JavaVersion.VERSION_11
     }
 }
 
@@ -32,11 +34,10 @@ dependencies {
     implementation 'com.google.android.material:material:1.11.0'
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
     
-    // ✅ مكتبات sora-editor الموجودة فعلاً
+    // ✅ مكتبة desugaring (مطلوبة)
+    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.0.4'
+    
+    // ✅ مكتبات sora-editor
     implementation 'io.github.Rosemoe.sora-editor:editor:0.23.0'
     implementation 'io.github.Rosemoe.sora-editor:language-textmate:0.23.0'
-    
-    // ❌ أزل هذه المكتبات (غير موجودة)
-    // implementation 'io.github.Rosemoe.sora-editor:language-java:0.23.0'
-    // implementation 'io.github.Rosemoe.sora-editor:language-xml:0.23.0'
 }
