@@ -1,125 +1,211 @@
-package com.example.mybasic.activity
+package com.example.mybasic.activity;
 
-import android.os.Bundle
-import android.widget.Toast
-import androidx.appcompat.app.AppCompatActivity
-import androidx.appcompat.widget.Toolbar
-import com.google.android.material.button.MaterialButton
-import io.github.rosemoe.sora.langs.textmate.TextMateColorScheme
-import io.github.rosemoe.sora.langs.textmate.TextMateLanguage
-import io.github.rosemoe.sora.widget.CodeEditor
-import java.io.File
+import android.content.BroadcastReceiver;
+import android.content.ComponentName;
+import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
+import android.content.ServiceConnection;
+import android.graphics.Color;
+import android.os.Bundle;
+import android.os.Handler;
+import android.os.IBinder;
+import android.os.Looper;
+import android.view.KeyEvent;
+import android.view.inputmethod.EditorInfo;
+import android.widget.EditText;
+import android.widget.ImageButton;
+import android.widget.Toast;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.Toolbar;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
-class EditorActivity : AppCompatActivity() {
+import com.termux.view.TerminalView;
+import com.termux.terminal.TerminalSession;
+import com.termux.terminal.TerminalSessionClient;
+
+import java.io.File;
+
+public class MainActivity extends AppCompatActivity implements TerminalSessionClient {
     
-    private lateinit var editor: CodeEditor
-    private var currentFile: File? = null
-    private var fileContent: String = ""
+    private TerminalView terminalView;
+    private TerminalSession terminalSession;
+    private EditText inputCommand;
+    private Handler mainHandler;
+    private String currentDir;
     
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_editor)
-        
-        val toolbar = findViewById<Toolbar>(R.id.toolbar)
-        setSupportActionBar(toolbar)
-        supportActionBar?.setDisplayHomeAsUpEnabled(true)
-        
-        editor = findViewById(R.id.code_editor)
-        
-        // إعدادات المحرر
-        setupEditor()
-        
-        // تحميل الملف إذا ورد
-        val filePath = intent.getStringExtra("file_path") ?: "/sdcard/note.txt"
-        currentFile = File(filePath)
-        loadFile()
-        
-        // أزرار التحكم
-        findViewById<MaterialButton>(R.id.btn_save).setOnClickListener { saveFile() }
-        findViewById<MaterialButton>(R.id.btn_save_as).setOnClickListener { saveFileAs() }
-        findViewById<MaterialButton>(R.id.btn_undo).setOnClickListener { editor.undo() }
-        findViewById<MaterialButton>(R.id.btn_redo).setOnClickListener { editor.redo() }
-        findViewById<MaterialButton>(R.id.btn_search).setOnClickListener { editor.searchOptions.show() }
-    }
+    // ربط الخدمة
+    private boolean isServiceBound = false;
     
-    private fun setupEditor() {
-        // مظهر داكن
-        val colorScheme = TextMateColorScheme.create()
-        colorScheme.setColor(io.github.rosemoe.sora.widget.schemes.EditorColorScheme.WHOLE_BACKGROUND, 
-                             android.graphics.Color.parseColor("#1E1E1E"))
-        editor.colorScheme = colorScheme
-        
-        editor.setTextSize(14f)
-        editor.isLineNumberEnabled = true
-        editor.isWordwrap = false
-        
-        // تمييز للغات متعددة
-        val language = detectLanguage(currentFile?.name)
-        editor.setEditorLanguage(TextMateLanguage.create(language))
-    }
-    
-    private fun detectLanguage(filename: String?): String {
-        return when (filename?.substringAfterLast('.')) {
-            "rs" -> "source.rust"
-            "py" -> "source.python"
-            "kt", "java" -> "source.kotlin"
-            "sh" -> "source.shell"
-            "js" -> "source.javascript"
-            "html" -> "text.html.basic"
-            else -> "text.plain"
-        }
-    }
-    
-    private fun loadFile() {
-        currentFile?.let { file ->
-            if (file.exists()) {
-                fileContent = file.readText()
-                editor.setText(fileContent)
-                supportActionBar?.title = file.name
-            } else {
-                editor.setText("")
-                supportActionBar?.title = "محرر جديد"
+    // مستقبل المخرجات من LinuxService
+    private BroadcastReceiver outputReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            String output = intent.getStringExtra(LinuxService.EXTRA_OUTPUT);
+            if (output != null && terminalSession != null) {
+                terminalSession.write(output + "\n");
+            }
+            
+            String status = intent.getStringExtra(LinuxService.EXTRA_STATUS);
+            if (status != null && terminalSession != null) {
+                terminalSession.write("[INFO] " + status + "\n");
+            }
+            
+            String fileContent = intent.getStringExtra(LinuxService.EXTRA_FILE_CONTENT);
+            if (fileContent != null) {
+                // عرض محتوى الملف في الطرفية
+                terminalSession.write("\n" + fileContent + "\n");
             }
         }
-    }
+    };
     
-    private fun saveFile(): Boolean {
-        return currentFile?.let { file ->
-            try {
-                file.writeText(editor.text.toString())
-                Toast.makeText(this, "تم الحفظ: ${file.name}", Toast.LENGTH_SHORT).show()
-                true
-            } catch (e: Exception) {
-                Toast.makeText(this, "خطأ: ${e.message}", Toast.LENGTH_SHORT).show()
-                false
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_terminal);
+        
+        Toolbar toolbar = findViewById(R.id.toolbar);
+        setSupportActionBar(toolbar);
+        
+        terminalView = findViewById(R.id.terminal_view);
+        inputCommand = findViewById(R.id.input_command);
+        ImageButton sendButton = findViewById(R.id.send_button);
+        
+        currentDir = getFilesDir().getAbsolutePath();
+        mainHandler = new Handler(Looper.getMainLooper());
+        
+        // إعداد المحطة الطرفية
+        String[] env = {"TERM=xterm-256color"};
+        terminalSession = new TerminalSession(currentDir, "sh", env, this);
+        terminalView.attachSession(terminalSession);
+        terminalView.setTextSize(14);
+        
+        // إعدادات الألوان
+        terminalView.setTextColor(Color.WHITE);
+        terminalView.setBackgroundColor(Color.parseColor("#1E1E1E"));
+        terminalView.setCursorColor(Color.parseColor("#FFFFFF"));
+        
+        // تسجيل مستقبل المخرجات
+        IntentFilter filter = new IntentFilter(LinuxService.ACTION_OUTPUT);
+        LocalBroadcastManager.getInstance(this).registerReceiver(outputReceiver, filter);
+        
+        // بدء الخدمة
+        Intent serviceIntent = new Intent(this, LinuxService.class);
+        startService(serviceIntent);
+        
+        sendButton.setOnClickListener(v -> executeCommand());
+        
+        inputCommand.setOnEditorActionListener((v, actionId, event) -> {
+            if (actionId == EditorInfo.IME_ACTION_SEND || 
+                (event != null && event.getKeyCode() == KeyEvent.KEYCODE_ENTER)) {
+                executeCommand();
+                return true;
             }
-        } ?: saveFileAs()
+            return false;
+        });
+        
+        // رسالة ترحيب
+        terminalSession.write("=== LinuxAL Terminal ===\n");
+        terminalSession.write("Type 'help' for commands\n");
+        terminalSession.write("Linux service starting...\n");
     }
     
-    private fun saveFileAs(): Boolean {
-        // فتح نافذة لحفظ الملف
-        val fileName = "document_${System.currentTimeMillis()}.txt"
-        val newFile = File("/sdcard/$fileName")
-        currentFile = newFile
-        return saveFile()
+    private void executeCommand() {
+        String command = inputCommand.getText().toString().trim();
+        if (command.isEmpty()) return;
+        
+        // معالجة الأوامر الخاصة
+        if (command.equals("help")) {
+            showHelp();
+            inputCommand.setText("");
+            return;
+        }
+        
+        if (command.equals("status")) {
+            terminalSession.write("Checking Linux status...\n");
+            // إرسال أمر للتحقق من الحالة
+            Intent intent = new Intent(LinuxService.ACTION_COMMAND);
+            intent.putExtra(LinuxService.EXTRA_COMMAND, "echo 'Linux is running'");
+            LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
+            inputCommand.setText("");
+            return;
+        }
+        
+        if (command.startsWith("edit ")) {
+            String filePath = command.substring(5);
+            Intent intent = new Intent(MainActivity.this, EditorActivity.class);
+            intent.putExtra("file_path", filePath);
+            startActivity(intent);
+            inputCommand.setText("");
+            return;
+        }
+        
+        if (command.equals("edit")) {
+            Intent intent = new Intent(MainActivity.this, EditorActivity.class);
+            startActivity(intent);
+            inputCommand.setText("");
+            return;
+        }
+        
+        // إرسال الأمر إلى LinuxService
+        Intent intent = new Intent(LinuxService.ACTION_COMMAND);
+        intent.putExtra(LinuxService.EXTRA_COMMAND, command);
+        LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
+        
+        // عرض الأمر في الطرفية
+        terminalSession.write("$ " + command + "\n");
+        inputCommand.setText("");
     }
     
-    override fun onSupportNavigateUp(): Boolean {
-        if (editor.text.toString() != fileContent) {
-            // ملف غير محفوظ - طلب تأكيد
-            android.app.AlertDialog.Builder(this)
-                .setTitle("حفظ التغييرات؟")
-                .setMessage("هل تريد حفظ التغييرات قبل الخروج؟")
-                .setPositiveButton("حفظ") { _, _ -> 
-                    saveFile()
-                    finish()
-                }
-                .setNegativeButton("تجاهل") { _, _ -> finish() }
-                .setNeutralButton("إلغاء", null)
-                .show()
-        } else {
-            finish()
-        }
-        return true
+    private void showHelp() {
+        String help = "\n=== LinuxAL Commands ===\n" +
+                      "help           - Show this help\n" +
+                      "status         - Check Linux status\n" +
+                      "edit [file]    - Open editor\n" +
+                      "apk add <pkg>  - Install packages\n" +
+                      "gcc, rustc, python3 - Development tools\n" +
+                      "================================\n\n";
+        terminalSession.write(help);
     }
-        }
+    
+    // TerminalSessionClient methods
+    @Override
+    public void onTextChanged(TerminalSession session) {
+        runOnUiThread(() -> terminalView.onScreenUpdated());
+    }
+    
+    @Override
+    public void onTitleChanged(TerminalSession session) {}
+    
+    @Override
+    public void onSessionFinished(TerminalSession session) {}
+    
+    @Override
+    public void onCopyTextToClipboard(TerminalSession session, String text) {}
+    
+    @Override
+    public void onPasteTextFromClipboard(TerminalSession session) {}
+    
+    @Override
+    public void onBell() {}
+    
+    @Override
+    public void onColorsChanged(TerminalSession session) {}
+    
+    @Override
+    public void onTerminalCursorStateChange(boolean state) {}
+    
+    @Override
+    public void setTerminalShellPid(int pid) {}
+    
+    @Override
+    public void onLogError(String message, Exception e) {
+        terminalSession.write("Error: " + message + "\n");
+    }
+    
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        LocalBroadcastManager.getInstance(this).unregisterReceiver(outputReceiver);
+    }
+}
