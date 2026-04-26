@@ -32,11 +32,11 @@ dependencies {
     implementation 'com.google.android.material:material:1.11.0'
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
     
-    // ✅ مكتبات sora-editor
+    // ✅ مكتبات sora-editor الموجودة فعلاً
     implementation 'io.github.Rosemoe.sora-editor:editor:0.23.0'
     implementation 'io.github.Rosemoe.sora-editor:language-textmate:0.23.0'
-    implementation 'io.github.Rosemoe.sora-editor:language-java:0.23.0'
     
-    // ✅ دعم XML و Kotlin
-    implementation 'io.github.Rosemoe.sora-editor:language-xml:0.23.0'
+    // ❌ أزل هذه المكتبات (غير موجودة)
+    // implementation 'io.github.Rosemoe.sora-editor:language-java:0.23.0'
+    // implementation 'io.github.Rosemoe.sora-editor:language-xml:0.23.0'
 }
