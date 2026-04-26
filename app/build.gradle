@@ -1,12 +1,10 @@
 plugins {
-    alias(libs.plugins.android.application)
+    id 'com.android.application'
 }
 
 android {
     namespace 'com.example.mybasic.activity'
-    compileSdk 36
-
-    ndkVersion = "29.0.14206865"
+    compileSdk 34
 
     defaultConfig {
         applicationId 'com.example.mybasic.activity'
@@ -16,53 +14,29 @@ android {
         versionName '1.0'
 
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
-        
-        ndk {
-            abiFilters 'arm64-v8a'
-        }
     }
 
     buildFeatures {
         viewBinding true
-        compose true  // أضف هذا لاستخدام Compose
-    }
-
-    composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.10"
     }
 
     compileOptions {
-        coreLibraryDesugaringEnabled true
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
-    }
-
-    sourceSets {
-        main {
-            jniLibs.srcDirs = ['src/main/jniLibs']
-        }
     }
 }
 
 dependencies {
-    implementation libs.androidx.core
-    implementation libs.androidx.appcompat
-    implementation libs.material
-    implementation libs.androidx.constraintlayout
-    implementation project(':terminal-emulator')
-    implementation project(':terminal-view')
-    implementation project(':termux-shared')
-    implementation fileTree(dir: "libs", include: ["*.aar"])
-    implementation 'com.google.guava:listenablefuture:9999.0-empty-to-avoid-conflict-with-guava'
+    // التبعيات الأساسية
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+    implementation 'com.google.android.material:material:1.11.0'
+    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
     
-    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.0.4'
-    
-    // ➕ إضافة sora-editor
+    // ✅ مكتبات sora-editor
     implementation 'io.github.Rosemoe.sora-editor:editor:0.23.0'
     implementation 'io.github.Rosemoe.sora-editor:language-textmate:0.23.0'
+    implementation 'io.github.Rosemoe.sora-editor:language-java:0.23.0'
     
-    // ➕ إضافة Jetpack Compose للواجهات الحديثة
-    implementation 'androidx.compose.ui:ui:1.6.0'
-    implementation 'androidx.compose.material3:material3:1.2.0'
-    implementation 'androidx.activity:activity-compose:1.8.2'
+    // ✅ دعم XML و Kotlin
+    implementation 'io.github.Rosemoe.sora-editor:language-xml:0.23.0'
 }
